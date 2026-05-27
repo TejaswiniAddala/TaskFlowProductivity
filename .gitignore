@@ -1,0 +1,9 @@
+node_modules/
+.env
+.env.local
+.DS_Store
+dist/
+build/
+backend/taskflow.db
+backend/ai_microservice/venv/
+backend/ai_microservice/__pycache__/
