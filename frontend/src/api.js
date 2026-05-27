@@ -1,7 +1,8 @@
 // API & Real-time WebSocket Service for TaskFlow
 
-const API_BASE = (import.meta.env && import.meta.env.VITE_API_URL) ? import.meta.env.VITE_API_URL : 'http://localhost:5000/api';
-const WS_BASE = ((import.meta.env && import.meta.env.VITE_API_URL) ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:5000').replace('http', 'ws');
+const IS_PROD = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+const API_BASE = IS_PROD ? 'https://taskflowproductivity.onrender.com/api' : 'http://localhost:5000/api';
+const WS_BASE = IS_PROD ? 'wss://taskflowproductivity.onrender.com' : 'ws://localhost:5000';
 
 let ws = null;
 let reconnectTimer = null;
