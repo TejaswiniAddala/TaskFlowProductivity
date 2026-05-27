@@ -12,7 +12,18 @@ const JWT_SECRET = process.env.JWT_SECRET || 'taskflow-super-secure-secret-key';
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'http://localhost:3000', 
+      'http://localhost:5173',
+      process.env.FRONTEND_URL
+    ];
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
 app.use(express.json());
