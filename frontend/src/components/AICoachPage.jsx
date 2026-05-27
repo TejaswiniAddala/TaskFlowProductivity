@@ -13,63 +13,38 @@ export default function AICoachPage({ tasks, user, pomodoroStats }) {
   ]);
   const [inputMsg, setInputMsg] = useState('');
 
-  // Simulated AI responses based on role
-  const generateAIResponse = (userMsg) => {
-    const lower = userMsg.toLowerCase();
-    const responses = {
-      student: {
-        'schedule': 'Based on your subjects, I recommend: 2 hours DSA in the morning, 1.5 hours DBMS after lunch, and revision before bed. Shall I create this as a plan?',
-        'exam': `Your next exam is approaching! Focus on high-yield topics first. I'd suggest starting with revision of weak areas identified in your analytics.`,
-        'default': `As your Study Coach, I recommend focusing on your highest-priority assignments first. You have ${tasks.filter(t => t.status !== 'done').length} pending tasks. Want me to create a study plan?`
-      },
-      employee: {
-        'meeting': 'I see you have meetings scheduled. I recommend blocking 2 hours of deep work before your first meeting for maximum productivity.',
-        'report': 'I can help structure your report. Start with key metrics, then team updates, and finish with blockers. Want me to outline it?',
-        'default': `Your workplace efficiency is looking good! You have ${tasks.filter(t => t.priority === 'high' && t.status !== 'done').length} high-priority items. Shall I help prioritize your day?`
-      },
-      freelancer: {
-        'invoice': 'I notice some invoices may be pending. Sending reminders before noon gets 40% faster responses. Want me to draft a follow-up?',
-        'client': 'Managing multiple clients? I recommend time-blocking: dedicate specific hours to each client. This reduces context-switching by 60%.',
-        'default': `As your Business Manager, I see ${tasks.filter(t => t.status !== 'done').length} active project items. Let me help optimize your client workflow.`
-      },
-      startup: {
-        'sprint': 'For optimal sprint planning, keep tasks under 8 per sprint. Your current sprint has good velocity. Want me to analyze bottlenecks?',
-        'team': 'Team productivity looks healthy! I recommend a quick standup to unblock any pending items. Async updates can save 30% meeting time.',
-        'default': `Your startup ops are tracking well! Sprint velocity is stable with ${tasks.filter(t => t.status === 'done').length} completed tasks. Need help with planning?`
-      },
-      developer: {
-        'bug': 'I see critical bugs in the queue. Prioritize production-impacting issues first. Developers who take breaks every 90 mins write 15% fewer bugs.',
-        'pr': 'Review open PRs before starting new features — it unblocks teammates and improves code quality. Want me to organize your review queue?',
-        'default': `Hey dev! You have ${tasks.filter(t => t.status !== 'done').length} items in your sprint. Shall I help triage by priority and estimate?`
-      },
-      creator: {
-        'content': 'Batch-filming is the most efficient strategy. Film 3 videos in one session, then schedule editing across the week. Want me to plan this?',
-        'social': 'Posts between 10-11 AM get 23% higher engagement. I recommend scheduling your next upload for that window. Shall I set it up?',
-        'default': `As your Creative Director, let's plan content that resonates! You have ${tasks.filter(t => t.status !== 'done').length} content items in progress.`
-      },
-      manager: {
-        'team': 'Check in with members who haven\'t updated in 48+ hours. A quick async ping is often more effective than scheduling another meeting.',
-        'delegate': 'Effective delegation tip: assign tasks with clear outcomes, not just actions. This improves completion rates by 45%.',
-        'default': `As your Leadership Advisor, I see ${tasks.filter(t => t.priority === 'high' && t.status !== 'done').length} high-priority items across your team. Let me help prioritize.`
-      }
-    };
-
-    const roleResponses = responses[role] || responses.student;
-    for (const [keyword, response] of Object.entries(roleResponses)) {
-      if (keyword !== 'default' && lower.includes(keyword)) return response;
-    }
-    return roleResponses.default;
-  };
-
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     e.preventDefault();
     if (!inputMsg.trim()) return;
+    
     const userMessage = inputMsg.trim();
     setChatMessages(prev => [...prev, { from: 'user', text: userMessage }]);
     setInputMsg('');
-    setTimeout(() => {
-      setChatMessages(prev => [...prev, { from: 'ai', text: generateAIResponse(userMessage) }]);
-    }, 600);
+    
+    try {
+      // Show typing indicator
+      setChatMessages(prev => [...prev, { from: 'ai', text: '...', isTyping: true }]);
+      
+      const { apiRequest } = await import('../api.js');
+      const response = await apiRequest('/ai/chat', 'POST', {
+        message: userMessage,
+        role: role,
+        persona: config.aiPersona,
+        contextTasks: tasks.filter(t => t.status !== 'done')
+      });
+      
+      // Replace typing indicator with actual response
+      setChatMessages(prev => {
+        const withoutTyping = prev.filter(m => !m.isTyping);
+        return [...withoutTyping, { from: 'ai', text: response.reply }];
+      });
+    } catch (error) {
+      console.error(error);
+      setChatMessages(prev => {
+        const withoutTyping = prev.filter(m => !m.isTyping);
+        return [...withoutTyping, { from: 'ai', text: 'I am currently offline or missing my API key. Please check the server connection.' }];
+      });
+    }
   };
 
   return (

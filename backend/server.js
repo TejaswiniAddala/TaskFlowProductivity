@@ -11,6 +11,8 @@ const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'taskflow-super-secure-secret-key';
 
 // Middleware
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+
 app.use(cors({
   origin: function (origin, callback) {
     const allowedOrigins = [
@@ -749,6 +751,38 @@ app.get('/api/pomodoro/stats', authenticateToken, async (req, res) => {
 });
 
 // Start listening
+// AI Chatbot Route
+app.post('/api/ai/chat', authenticateToken, async (req, res) => {
+  try {
+    const { message, role, persona, contextTasks } = req.body;
+    
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({ error: 'Gemini API key is not configured.' });
+    }
+
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    let systemPrompt = `You are a highly intelligent TaskFlow Productivity AI Coach. Your persona is a ${persona} tailored for a ${role}. 
+    Keep your responses extremely concise, encouraging, and actionable (maximum 2-3 sentences). 
+    Do not use markdown formatting like **bold** or asterisks. `;
+
+    if (contextTasks && contextTasks.length > 0) {
+      systemPrompt += `The user currently has ${contextTasks.length} pending tasks.`;
+    }
+
+    const fullPrompt = `${systemPrompt}\n\nUser: ${message}\nCoach:`;
+    
+    const result = await model.generateContent(fullPrompt);
+    const responseText = result.response.text();
+
+    res.json({ reply: responseText.trim() });
+  } catch (error) {
+    console.error('AI Chat Error:', error);
+    res.status(500).json({ error: 'Failed to generate AI response.' });
+  }
+});
+
 // Simple health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
